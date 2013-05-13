@@ -22,11 +22,14 @@
 // recommended method for creating managedObject
 - (id)createManagedObject;
 
-- (void)saveContext:(NSManagedObjectContext *)context;
+- (NSError *)saveContext:(NSManagedObjectContext *)context;
 
 // insert 
 - (void)insertObject:(NSManagedObject *)object;
+- (void)insertObject:(NSManagedObject *)object completion:(void(^)(NSError *error))completion;
+
 - (void)insertObjects:(NSArray *)objects;
+- (void)insertObjects:(NSArray *)objects completion:(void(^)(NSError *error))completion;
 
 // save or update
 // Managed object must have an uniqueKey，otherwise equal to insert methods
@@ -35,15 +38,14 @@
 
 // delete
 - (void)deleteObject:(NSManagedObject *)object;
+- (void)deleteObject:(NSManagedObject *)object completion:(void(^)(NSError *error))completion;
 - (void)deleteObjects:(NSArray *)objects;
-- (void)deleteObjects:(NSArray *)objects completion:(void(^)())completion;
+- (void)deleteObjects:(NSArray *)objects completion:(void(^)(NSError *error))completion;
 
 // find
-- (void)findbyFetchRequest:(NSFetchRequest *)fetchRequest callback:(void(^)(NSArray *detachedObjects))callback;
-
-- (void)findAll:(void(^)(NSArray *detachedObjects))callback;
-
+- (void)findAll:(void(^)(NSArray *objects,NSError *error))callback;
+- (void)findbyFetchRequest:(NSFetchRequest *)fetchRequest callback:(void(^)(NSArray *objects ,NSError *error))callback;
 // see http://developer.apple.com/library/ios/#documentation/Cocoa/Conceptual/Predicates/Articles/pSyntax.html#//apple_ref/doc/uid/TP40001795-SW1
-- (void)findbyPredicate:(NSPredicate *)predicate callback:(void(^)(NSArray *detachedObjects))callback;
-- (void)findbyPredicate:(NSPredicate *)predicate offset:(int)offset limit:(int)limit callback:(void (^)(NSArray *))callback;
+- (void)findbyPredicate:(NSPredicate *)predicate callback:(void(^)(NSArray *objects, NSError *error))callback;
+- (void)findbyPredicate:(NSPredicate *)predicate offset:(int)offset limit:(int)limit callback:(void (^)(NSArray *objects, NSError *error))callback;
 @end

@@ -35,42 +35,50 @@
 }
 
 
-- (void)saveContext:(NSManagedObjectContext *)context {
+- (NSError *)saveContext:(NSManagedObjectContext *)context {
     NSError *error;
-    [context save:&error];
-    if (error) {
-        NSLog(@"core data save error: %@\r\n%@",[error userInfo],[error debugDescription]);
+    if ([context hasChanges]) {
+        [context save:&error];
     }
+    if (error) {
+        NSLog(@"[warning] core data save error: %@\r\n%@ in Context:%@",[error userInfo],[error debugDescription],[context description]);
+    }
+    return error;
 }
 
 #pragma mark -
 #pragma mark Insert
 - (void)insertObject:(NSManagedObject *)object {
+    [self insertObject:object completion:nil];
+}
+
+- (void)insertObject:(NSManagedObject *)object completion:(void (^)(NSError *))completion {
     [DDCoreDataManager performWriteBlock:^(NSManagedObjectContext *context) {
         [context insertObject:object];
         
-        NSError *error;
-        [context save:&error];
-        if (error) {
-            NSLog(@"insert object: %@\r\n%@",[error userInfo],[error debugDescription]);
+        NSError *error = [self saveContext:context];
+        if (completion) {
+            completion(error);
         }
     }];
 }
 
 - (void)insertObjects:(NSArray *)objects {
+    [self insertObjects:objects completion:nil];
+}
+
+- (void)insertObjects:(NSArray *)objects completion:(void (^)(NSError *))completion {
     [DDCoreDataManager performWriteBlock:^(NSManagedObjectContext *context) {
         for (id object in objects) {
             [context insertObject:object];
         }
         
-        if ([context hasChanges]) {
-            NSError *error;
-            [context save:&error];
-            if (error) {
-                NSLog(@"insert objects: %@\r\n%@",[error userInfo],[error debugDescription]);
-            }
+        NSError *error = [self saveContext:context];
+        if (completion) {
+            completion(error);
         }
     }];
+
 }
 
 #pragma mark -
@@ -114,39 +122,42 @@
 #pragma mark Delete
 // delete
 - (void)deleteObject:(NSManagedObject *)object {
-    [self deleteObjects:[NSArray arrayWithObject:object]];
+    [self deleteObjects:[NSArray arrayWithObject:object] completion:nil];
+}
+
+- (void)deleteObject:(NSManagedObject *)object completion:(void(^)(NSError *error))completion {
+    [self deleteObjects:[NSArray arrayWithObject:object] completion:completion];
 }
 
 - (void)deleteObjects:(NSArray *)objects {
     [self deleteObjects:objects completion:nil];
 }
 
-- (void)deleteObjects:(NSArray *)objects completion:(void(^)())completion {
+- (void)deleteObjects:(NSArray *)objects completion:(void(^)(NSError *error))completion {
     [DDCoreDataManager performWriteBlock:^(NSManagedObjectContext *context) {
         for (NSManagedObject *anObject in objects) {
             [context deleteObject:anObject];
         }
-        if ([context hasChanges]) {
-            [context save:NULL];
-        }
+        
+        NSError *error = [self saveContext:context];
         
         if (completion) {
-            completion();
+            completion(error);
         }
     }];
 }
 
 #pragma mark -
 #pragma mark Find
-- (void)findAll:(void (^)(NSArray *))callback {
+- (void)findAll:(void (^)(NSArray *,NSError *))callback {
     [self findbyPredicate:nil callback:callback];
 }
 
-- (void)findbyPredicate:(NSPredicate *)predicate callback:(void (^)(NSArray *))callback {
+- (void)findbyPredicate:(NSPredicate *)predicate callback:(void (^)(NSArray *,NSError *))callback {
     [self findbyPredicate:predicate offset:-1 limit:-1 callback:callback];
 }
 
-- (void)findbyPredicate:(NSPredicate *)predicate offset:(int)offset limit:(int)limit callback:(void (^)(NSArray *))callback {
+- (void)findbyPredicate:(NSPredicate *)predicate offset:(int)offset limit:(int)limit callback:(void (^)(NSArray *,NSError *))callback {
     NSFetchRequest *fetchRequest = NSFetchRequest.new;
     fetchRequest.predicate = predicate;
     
@@ -157,16 +168,14 @@
     [self findbyFetchRequest:fetchRequest callback:callback];
 }
 
-- (void)findbyFetchRequest:(NSFetchRequest *)fetchRequest callback:(void (^)(NSArray *))callback {
+- (void)findbyFetchRequest:(NSFetchRequest *)fetchRequest callback:(void (^)(NSArray *,NSError *))callback {
     [DDCoreDataManager performReadBlock:^(NSManagedObjectContext *context) {
         
         fetchRequest.entity = [NSEntityDescription entityForName:[_managedObjectClass description] inManagedObjectContext:context];
         NSError *error;
         NSArray *detachedObjects = [context executeFetchRequest:fetchRequest error:&error];
-        //TODO report error
-        
         if (callback) {
-            callback(detachedObjects);
+            callback(detachedObjects,error);
         }
     }];
 }
