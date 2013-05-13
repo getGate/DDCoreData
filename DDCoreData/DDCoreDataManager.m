@@ -20,7 +20,7 @@ dispatch_queue_t background_save_queue()
 {
     if (coredata_background_save_queue == NULL)
     {
-        coredata_background_save_queue = dispatch_queue_create("com.meituan.coredata.background", 0);
+        coredata_background_save_queue = dispatch_queue_create("me.leon.coredata.background", 0);
     }
     return coredata_background_save_queue;
 }
